@@ -1,300 +1,257 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexNews - Главные новости</title>
+    <title>NexNews — Google News Style</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Roboto', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #121212; color: #e4e4e7; }
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #121212; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-        .news-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .news-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5); }
+        body { background-color: #f8f9fa; color: #202124; transition: background-color 0.3s; }
+        .dark body { background-color: #121212; color: #e8eaed; }
+        .google-shadow { box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15); }
+        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
-<body class="selection:bg-blue-500/30">
-    <div id="app">
-        <!-- Header -->
-        <header class="sticky top-0 z-40 bg-[#121212]/80 backdrop-blur-md border-b border-zinc-800">
-            <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <button id="menuBtn" class="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400">
-                        <i data-lucide="menu" class="w-6 h-6"></i>
-                    </button>
-                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.reload()">
-                        <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/20">
-                            <i data-lucide="newspaper" class="w-5 h-5 text-white"></i>
-                        </div>
-                        <span class="text-xl font-bold tracking-tight text-blue-400 hidden sm:block">NexNews</span>
-                    </div>
-                </div>
+<body class="dark">
+    <div id="root"></div>
 
-                <div class="flex items-center gap-2">
-                    <div id="userArea">
-                        <button id="loginBtn" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-full transition-all shadow-md shadow-blue-600/20">
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="">
-                            <span class="hidden sm:inline">Войти</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </header>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { motion, AnimatePresence } = window.Motion;
 
-        <!-- Sidebar Overlay -->
-        <div id="sidebarOverlay" class="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300"></div>
-        
-        <!-- Sidebar -->
-        <aside id="sidebar" class="fixed top-0 left-0 bottom-0 w-72 bg-[#1e1e1e] z-50 shadow-2xl border-r border-zinc-800 p-6 flex flex-col -translate-x-full transition-transform duration-300">
-            <div class="flex items-center justify-between mb-10">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <i data-lucide="newspaper" class="w-4 h-4 text-white"></i>
-                    </div>
-                    <span class="text-xl font-bold text-blue-400">NexNews</span>
-                </div>
-                <button id="closeSidebar" class="p-2 hover:bg-zinc-800 rounded-full text-white">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <nav class="space-y-2 flex-1">
-                <button onclick="changePage('home')" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-medium bg-blue-900/20 text-blue-400" data-page="home">
-                    <i data-lucide="home" class="w-5 h-5"></i> Главная
-                </button>
-                <button onclick="changePage('favorites')" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-medium text-zinc-400 hover:bg-zinc-800" data-page="favorites">
-                    <i data-lucide="bookmark" class="w-5 h-5"></i> Избранное
-                </button>
-                <button onclick="changePage('history')" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-medium text-zinc-400 hover:bg-zinc-800" data-page="history">
-                    <i data-lucide="history" class="w-5 h-5"></i> История
-                </button>
-            </nav>
+        function App() {
+            const [news, setNews] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [darkMode, setDarkMode] = useState(true);
+            const [showSidebar, setShowSidebar] = useState(false);
+            const [favorites, setFavorites] = useState([]);
+            const [history, setHistory] = useState([]);
+            const [currentPage, setCurrentPage] = useState('home');
 
-            <div class="mt-auto pt-6 border-t border-zinc-800">
-                <a href="https://t.me/brows_nexus" target="_blank" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-900/10 text-blue-400 hover:bg-blue-900/20 transition-all font-bold">
-                    <i data-lucide="send" class="w-5 h-5"></i>
-                    <span>Мы в телеграм</span>
-                </a>
-            </div>
-        </aside>
+            // Загрузка данных
+            useEffect(() => {
+                const savedFavs = localStorage.getItem('nex-favs');
+                if (savedFavs) setFavorites(JSON.parse(savedFavs));
+                const savedHistory = localStorage.getItem('nex-history');
+                if (savedHistory) setHistory(JSON.parse(savedHistory));
+                
+                loadNewsData();
+            }, []);
 
-        <!-- Main Content -->
-        <main class="max-w-2xl mx-auto px-4 py-6">
-            <div class="flex items-center justify-between mb-6">
-                <h1 id="pageTitle" class="text-2xl font-black tracking-tight text-white">Главные новости</h1>
-                <button id="refreshBtn" class="flex items-center gap-2 text-xs font-bold text-blue-400 hover:bg-blue-900/20 px-3 py-1.5 rounded-full transition-all">
-                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Обновить
-                </button>
-            </div>
-
-            <div id="newsContainer" class="space-y-6">
-                <!-- News items will be injected here -->
-                <div class="flex flex-col items-center justify-center py-20">
-                    <i data-lucide="refresh-cw" class="w-10 h-10 text-blue-600 animate-spin mb-4"></i>
-                    <p class="text-zinc-400">Загрузка свежих новостей...</p>
-                </div>
-            </div>
-
-            <button id="loadMoreBtn" class="w-full mt-8 py-5 bg-[#1e1e1e] border border-zinc-800 rounded-2xl font-black text-blue-400 hover:shadow-lg transition-all flex items-center justify-center gap-3 hidden">
-                <i data-lucide="zap" class="w-5 h-5"></i> Загрузить еще больше новостей
-            </button>
-        </main>
-
-        <!-- Login Modal -->
-        <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
-            <div class="bg-[#1e1e1e] p-10 rounded-[32px] max-w-sm w-full text-center shadow-2xl border border-zinc-800">
-                <div class="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center mx-auto mb-8">
-                    <i data-lucide="newspaper" class="w-10 h-10 text-blue-600"></i>
-                </div>
-                <h2 class="text-3xl font-black mb-3 text-white">NexNews</h2>
-                <p class="text-zinc-400 text-sm mb-10 leading-relaxed">Войдите через Google, чтобы получить персональную ленту и сохранять избранное.</p>
-                <button id="googleSignInBtn" class="w-full flex items-center justify-center gap-4 bg-white text-black font-black py-4 px-6 rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all mb-6 shadow-xl shadow-blue-600/10">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="w-6 h-6"> Войти с Google
-                </button>
-                <button id="skipLoginBtn" class="text-zinc-400 hover:text-zinc-200 text-sm font-bold transition-colors">Пропустить</button>
-            </div>
-        </div>
-    </div>
-
-    <script type="module">
-        // Мы НЕ используем API ключи. Мы используем публичные RSS-ленты.
-        
-        // State
-        let news = [];
-        let favorites = JSON.parse(localStorage.getItem('nexnews-favs') || '[]');
-        let history = JSON.parse(localStorage.getItem('nexnews-history') || '[]');
-        let currentPage = 'home';
-        let isLoading = false;
-
-        // UI Elements
-        const newsContainer = document.getElementById('newsContainer');
-        const userArea = document.getElementById('userArea');
-        const loginModal = document.getElementById('loginModal');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-        const pageTitle = document.getElementById('pageTitle');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-
-        // Initialize Icons
-        lucide.createIcons();
-
-        // RSS Feeds (Публичные ленты новостей)
-        const RSS_FEEDS = [
-            'https://ria.ru/export/rss2/archive/index.xml',
-            'https://tass.ru/rss/v2.xml',
-            'https://www.vesti.ru/section.rss?cid=7'
-        ];
-
-        async function fetchNews() {
-            if (isLoading) return;
-            isLoading = true;
-            newsContainer.innerHTML = '<div class="flex flex-col items-center justify-center py-20"><i data-lucide="refresh-cw" class="w-10 h-10 text-blue-600 animate-spin mb-4"></i><p class="text-zinc-400">Загрузка свежих новостей...</p></div>';
-            lucide.createIcons();
-
-            try {
-                const allNews = [];
-                for (const url of RSS_FEEDS) {
-                    try {
-                        // Используем публичный прокси для обхода CORS
-                        const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
-                        const data = await res.json();
-                        if (data.items) {
-                            data.items.forEach(item => {
-                                allNews.push({
-                                    id: item.guid || Math.random().toString(36),
-                                    title: item.title,
-                                    summary: item.description.replace(/<[^>]*>?/gm, '').slice(0, 150) + '...',
-                                    url: item.link,
-                                    source: data.feed.title || 'Новости',
-                                    publishedAt: item.pubDate,
-                                    category: item.categories?.[0] || 'Общее',
-                                    imageUrl: item.enclosure?.link || item.thumbnail || null
-                                });
-                            });
-                        }
-                    } catch (e) { console.error("RSS fetch error:", e); }
+            // Прямая загрузка новостей (через прокси для RSS)
+            const loadNewsData = async () => {
+                setLoading(true);
+                try {
+                    // Используем открытый RSS фид Google News Россия
+                    const rssUrl = encodeURIComponent('https://news.google.com/rss/search?q=Россия&hl=ru&gl=RU&ceid=RU:ru');
+                    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);
+                    const data = await res.json();
+                    
+                    if (data.items) {
+                        const formatted = data.items.map((item, idx) => ({
+                            id: idx,
+                            title: item.title,
+                            summary: item.content || item.description,
+                            url: item.link,
+                            source: item.author || 'Google News',
+                            publishedAt: item.pubDate,
+                            imageUrl: item.enclosure?.link || `https://picsum.photos/seed/${idx}/800/450`,
+                            category: 'Главное'
+                        }));
+                        setNews(formatted);
+                    }
+                } catch (e) {
+                    console.error("Ошибка загрузки:", e);
                 }
+                setLoading(false);
+            };
 
-                // Сортировка по дате
-                news = allNews.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-                renderNews();
-            } catch (error) {
-                console.error("Global fetch error:", error);
-                newsContainer.innerHTML = '<div class="text-center py-20 text-red-500">Ошибка загрузки новостей. Попробуйте позже.</div>';
-            } finally {
-                isLoading = false;
-                loadMoreBtn.classList.remove('hidden');
-            }
-        }
+            const toggleTheme = () => {
+                setDarkMode(!darkMode);
+                document.body.classList.toggle('dark');
+            };
 
-        function renderNews() {
-            let itemsToRender = [];
-            if (currentPage === 'home') itemsToRender = news;
-            else if (currentPage === 'favorites') itemsToRender = favorites;
-            else if (currentPage === 'history') itemsToRender = history;
+            const trackClick = (item) => {
+                const newHistory = [item, ...history.filter(h => h.url !== item.url)].slice(0, 50);
+                setHistory(newHistory);
+                localStorage.setItem('nex-history', JSON.stringify(newHistory));
+                window.open(item.url, '_blank');
+            };
 
-            if (itemsToRender.length === 0) {
-                newsContainer.innerHTML = '<div class="text-center py-20"><i data-lucide="newspaper" class="w-12 h-12 text-zinc-700 mx-auto mb-4"></i><p class="text-zinc-400">Здесь пока ничего нет</p></div>';
-                lucide.createIcons();
-                return;
-            }
+            const toggleFav = (e, item) => {
+                e.stopPropagation();
+                const isFav = favorites.some(f => f.url === item.url);
+                const newFavs = isFav ? favorites.filter(f => f.url !== item.url) : [item, ...favorites];
+                setFavorites(newFavs);
+                localStorage.setItem('nex-favs', JSON.stringify(newFavs));
+            };
 
-            newsContainer.innerHTML = itemsToRender.map((item, i) => `
-                <article class="news-card bg-[#1e1e1e] border border-zinc-800 rounded-2xl overflow-hidden group">
-                    <div class="p-4 flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 bg-zinc-800 rounded-full flex items-center justify-center border border-zinc-700">
-                                <i data-lucide="newspaper" class="w-3 h-3 text-zinc-400"></i>
+            // Алгоритм рекомендаций (простое совпадение по ключевым словам из истории)
+            const recommendedNews = useMemo(() => {
+                if (history.length === 0) return news.slice(0, 10);
+                const keywords = history.map(h => h.title.split(' ')).flat().filter(w => w.length > 5);
+                return news.filter(n => keywords.some(k => n.title.includes(k))).slice(0, 10);
+            }, [news, history]);
+
+            const displayItems = currentPage === 'home' ? news : currentPage === 'favs' ? favorites : history;
+
+            return (
+                <div className="min-h-screen">
+                    {/* Header */}
+                    <header className={`fixed top-0 left-0 right-0 z-50 h-16 flex items-center px-4 border-b transition-colors ${darkMode ? 'bg-[#121212] border-zinc-800' : 'bg-white border-zinc-200'}`}>
+                        <div className="flex items-center gap-4 w-full max-w-7xl mx-auto">
+                            <button onClick={() => setShowSidebar(true)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full">
+                                <i data-lucide="menu" className="w-6 h-6"></i>
+                            </button>
+                            
+                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/d/da/Google_News_icon.svg" className="w-8 h-8" alt="Logo" />
+                                <span className="text-xl font-medium tracking-tight hidden sm:block">NexNews</span>
                             </div>
-                            <span class="text-xs font-bold text-zinc-300">${item.source}</span>
-                        </div>
-                        <button onclick="toggleFavorite('${item.url}')" class="p-1 ${favorites.some(f => f.url === item.url) ? 'text-red-500' : 'text-zinc-400 hover:text-red-500'}">
-                            <i data-lucide="heart" class="w-4 h-4 ${favorites.some(f => f.url === item.url) ? 'fill-current' : ''}"></i>
-                        </button>
-                    </div>
-                    <div class="cursor-pointer" onclick="openNews('${item.url}', '${item.title.replace(/'/g, "\\'")}', '${item.source}', '${item.imageUrl || ''}', '${item.category || ''}')">
-                        ${item.imageUrl ? `
-                            <div class="px-4">
-                                <div class="aspect-video rounded-xl overflow-hidden bg-zinc-800 relative">
-                                    <img src="${item.imageUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onerror="this.style.display='none'">
-                                    <div class="absolute top-2 right-2 px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg text-[10px] font-bold text-white uppercase">${item.category || 'Новости'}</div>
+
+                            <div className="flex-1 max-w-2xl mx-auto px-4 hidden md:block">
+                                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${darkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}>
+                                    <i data-lucide="search" className="w-5 h-5 text-zinc-500"></i>
+                                    <input type="text" placeholder="Поиск тем, мест и источников" className="bg-transparent border-none outline-none w-full text-sm" />
                                 </div>
                             </div>
-                        ` : ''}
-                        <div class="p-4 pt-3">
-                            <h2 class="text-lg font-bold leading-tight text-white group-hover:text-blue-400 transition-colors">${item.title}</h2>
-                            <p class="mt-2 text-sm text-zinc-400 line-clamp-2 opacity-80">${item.summary}</p>
+
+                            <div className="flex items-center gap-2">
+                                <button onClick={toggleTheme} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full">
+                                    <i data-lucide={darkMode ? "sun" : "moon"} className="w-5 h-5"></i>
+                                </button>
+                                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">V</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="px-4 pb-4 flex items-center justify-between">
-                        <div class="flex items-center gap-1.5 text-[10px] text-zinc-400 font-medium">
-                            <i data-lucide="clock" class="w-3 h-3"></i>
-                            ${new Date(item.publishedAt).toLocaleDateString('ru-RU')}
+                    </header>
+
+                    {/* Sidebar */}
+                    <AnimatePresence>
+                        {showSidebar && (
+                            <>
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowSidebar(false)} className="fixed inset-0 bg-black/50 z-[60]" />
+                                <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} className={`fixed top-0 left-0 bottom-0 w-64 z-[70] p-4 flex flex-col sidebar-transition ${darkMode ? 'bg-[#1e1e1e]' : 'bg-white'}`}>
+                                    <div className="flex items-center gap-4 mb-8">
+                                        <button onClick={() => setShowSidebar(false)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full">
+                                            <i data-lucide="x" className="w-6 h-6"></i>
+                                        </button>
+                                        <span className="text-xl font-medium">NexNews</span>
+                                    </div>
+                                    <nav className="space-y-1">
+                                        {[
+                                            { id: 'home', label: 'Главные новости', icon: 'newspaper' },
+                                            { id: 'favs', label: 'Избранное', icon: 'star' },
+                                            { id: 'history', label: 'История', icon: 'history' },
+                                        ].map(item => (
+                                            <button key={item.id} onClick={() => {setCurrentPage(item.id); setShowSidebar(false)}} className={`w-full flex items-center gap-4 px-4 py-3 rounded-r-full text-sm font-medium transition-colors ${currentPage === item.id ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                                <i data-lucide={item.icon} className="w-5 h-5"></i>
+                                                {item.label}
+                                            </button>
+                                        ))}
+                                    </nav>
+                                    <div className="mt-auto pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                                        <a href="https://t.me/brows_nexus" target="_blank" className="flex items-center gap-4 px-4 py-3 text-sm font-medium text-blue-600">
+                                            <i data-lucide="send" className="w-5 h-5"></i>
+                                            Telegram канал
+                                        </a>
+                                    </div>
+                                </motion.aside>
+                            </>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto pt-24 px-4 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-6">
+                            <h2 className="text-2xl font-medium mb-4">{currentPage === 'home' ? 'Главные новости' : currentPage === 'favs' ? 'Избранное' : 'История'}</h2>
+                            
+                            {loading ? (
+                                <div className="flex justify-center py-20"><i data-lucide="refresh-cw" className="w-10 h-10 animate-spin text-blue-600"></i></div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {displayItems.map((item, i) => (
+                                        <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`p-4 rounded-xl border transition-all cursor-pointer flex gap-4 ${darkMode ? 'bg-[#1e1e1e] border-zinc-800 hover:bg-zinc-800' : 'bg-white border-zinc-200 hover:shadow-md'}`} onClick={() => trackClick(item)}>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-xs font-bold text-blue-600 uppercase">{item.source}</span>
+                                                    <span className="text-xs text-zinc-500">• {new Date(item.publishedAt).toLocaleDateString()}</span>
+                                                </div>
+                                                <h3 className="text-lg font-medium leading-snug mb-2">{item.title}</h3>
+                                                <p className="text-sm text-zinc-500 line-clamp-3">{item.summary}</p>
+                                                <div className="mt-4 flex items-center gap-4">
+                                                    <button onClick={(e) => toggleFav(e, item)} className={`p-1 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 ${favorites.some(f => f.url === item.url) ? 'text-yellow-500' : 'text-zinc-400'}`}>
+                                                        <i data-lucide="star" className={`w-5 h-5 ${favorites.some(f => f.url === item.url) ? 'fill-current' : ''}`}></i>
+                                                    </button>
+                                                    <button className="p-1 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full"><i data-lucide="share-2" className="w-5 h-5"></i></button>
+                                                </div>
+                                            </div>
+                                            {item.imageUrl && (
+                                                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden flex-shrink-0">
+                                                    <img src={item.imageUrl} className="w-full h-full object-cover" alt="" />
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        <button onclick="shareNews('${item.url}', '${item.title.replace(/'/g, "\\'")}')" class="p-1 text-zinc-400 hover:text-blue-500">
-                            <i data-lucide="share-2" class="w-4 h-4"></i>
-                        </button>
+
+                        {/* Sidebar Recommendations */}
+                        <div className="hidden lg:block space-y-6">
+                            <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-[#1e1e1e] border-zinc-800' : 'bg-white border-zinc-200'}`}>
+                                <h3 className="text-xl font-medium mb-4 flex items-center gap-2">
+                                    <i data-lucide="zap" className="w-5 h-5 text-blue-600"></i>
+                                    Рекомендации для вас
+                                </h3>
+                                <div className="space-y-4">
+                                    {recommendedNews.map((item, i) => (
+                                        <div key={i} onClick={() => trackClick(item)} className="cursor-pointer group">
+                                            <p className="text-xs font-bold text-zinc-500 mb-1">{item.source}</p>
+                                            <h4 className="text-sm font-medium group-hover:text-blue-600 transition-colors line-clamp-2">{item.title}</h4>
+                                            <div className="h-px bg-zinc-200 dark:bg-zinc-800 mt-3" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* Footer Mobile Nav */}
+                    <div className={`fixed bottom-0 left-0 right-0 h-14 border-t flex items-center justify-around sm:hidden z-50 ${darkMode ? 'bg-[#121212] border-zinc-800' : 'bg-white border-zinc-200'}`}>
+                        <button onClick={() => setCurrentPage('home')} className={`p-2 ${currentPage === 'home' ? 'text-blue-600' : 'text-zinc-500'}`}><i data-lucide="home" className="w-6 h-6"></i></button>
+                        <button onClick={() => setCurrentPage('favs')} className={`p-2 ${currentPage === 'favs' ? 'text-blue-600' : 'text-zinc-500'}`}><i data-lucide="star" className="w-6 h-6"></i></button>
+                        <button onClick={() => setCurrentPage('history')} className={`p-2 ${currentPage === 'history' ? 'text-blue-600' : 'text-zinc-500'}`}><i data-lucide="history" className="w-6 h-6"></i></button>
                     </div>
-                </article>
-            `).join('');
-            lucide.createIcons();
+                </div>
+            );
         }
 
-        window.openNews = (url, title, source, imageUrl, category) => {
-            const entry = { title, url, source, imageUrl, category, viewedAt: new Date().toISOString() };
-            history = [entry, ...history.filter(h => h.url !== url)].slice(0, 50);
-            localStorage.setItem('nexnews-history', JSON.stringify(history));
-            window.open(url, '_blank');
-        };
-
-        window.toggleFavorite = (url) => {
-            const item = news.find(n => n.url === url) || favorites.find(f => f.url === url);
-            if (!item) return;
-            const isFav = favorites.some(f => f.url === url);
-            if (isFav) favorites = favorites.filter(f => f.url !== url);
-            else favorites = [item, ...favorites];
-            localStorage.setItem('nexnews-favs', JSON.stringify(favorites));
-            renderNews();
-        };
-
-        window.shareNews = (url, title) => {
-            if (navigator.share) navigator.share({ title, url });
-            else { navigator.clipboard.writeText(url); alert("Ссылка скопирована!"); }
-        };
-
-        window.changePage = (page) => {
-            currentPage = page;
-            pageTitle.innerText = page === 'home' ? 'Главные новости' : (page === 'favorites' ? 'Избранное' : 'История');
-            document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.remove('bg-blue-900/20', 'text-blue-400');
-                el.classList.add('text-zinc-400', 'hover:bg-zinc-800');
-                if (el.dataset.page === page) {
-                    el.classList.add('bg-blue-900/20', 'text-blue-400');
-                    el.classList.remove('text-zinc-400', 'hover:bg-zinc-800');
-                }
-            });
-            hideModal(sidebar);
-            hideModal(sidebarOverlay);
-            renderNews();
-        };
-
-        function showModal(el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('opacity-100'), 10); }
-        function hideModal(el) { el.classList.remove('opacity-100'); setTimeout(() => el.classList.add('hidden'), 300); }
-
-        document.getElementById('menuBtn').addEventListener('click', () => { showModal(sidebar); showModal(sidebarOverlay); sidebar.classList.remove('-translate-x-full'); });
-        document.getElementById('closeSidebar').addEventListener('click', () => { hideModal(sidebarOverlay); sidebar.classList.add('-translate-x-full'); });
-        sidebarOverlay.addEventListener('click', () => { hideModal(sidebarOverlay); sidebar.classList.add('-translate-x-full'); });
-        document.getElementById('refreshBtn').addEventListener('click', () => fetchNews());
-        document.getElementById('skipLoginBtn').addEventListener('click', () => hideModal(loginModal));
-
-        // Initial Load
-        fetchNews();
+        // Инициализация иконок после рендера
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        
+        // Наблюдатель за изменениями в DOM для иконок Lucide
+        const observer = new MutationObserver(() => {
+            if (window.lucide) window.lucide.createIcons();
+        });
+        observer.observe(document.getElementById('root'), { childList: true, subtree: true });
     </script>
 </body>
 </html>
