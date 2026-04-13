@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexNews - Главные новости России</title>
+    <title>NexNews - Главные новости</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -11,13 +11,13 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #121212; color: #e4e4e7; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #121212; }
         ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
+        .news-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .news-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5); }
     </style>
 </head>
 <body class="selection:bg-blue-500/30">
@@ -122,26 +122,10 @@
         </div>
     </div>
 
-    <!-- Firebase & Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-        const firebaseConfig = {
-            projectId: "gen-lang-client-0149034325",
-            appId: "1:316174573195:web:cb64af10a5287aed4a3e8e",
-            apiKey: "AIzaSyA3BqQPNZ1XkIPpVJwUV2vHLdMFoT5vYao",
-            authDomain: "gen-lang-client-0149034325.firebaseapp.com",
-            storageBucket: "gen-lang-client-0149034325.firebasestorage.app",
-            messagingSenderId: "316174573195"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-
+        // Мы НЕ используем API ключи. Мы используем публичные RSS-ленты.
+        
         // State
-        let user = null;
         let news = [];
         let favorites = JSON.parse(localStorage.getItem('nexnews-favs') || '[]');
         let history = JSON.parse(localStorage.getItem('nexnews-history') || '[]');
@@ -160,100 +144,49 @@
         // Initialize Icons
         lucide.createIcons();
 
-        // Auth Listener
-        onAuthStateChanged(auth, (u) => {
-            user = u;
-            updateUserUI();
-            if (!u && !localStorage.getItem('nexnews-skip-login')) {
-                showModal(loginModal);
-            }
-        });
+        // RSS Feeds (Публичные ленты новостей)
+        const RSS_FEEDS = [
+            'https://ria.ru/export/rss2/archive/index.xml',
+            'https://tass.ru/rss/v2.xml',
+            'https://www.vesti.ru/section.rss?cid=7'
+        ];
 
-        function updateUserUI() {
-            if (user) {
-                userArea.innerHTML = `
-                    <div class="relative group">
-                        <button class="flex items-center gap-1 p-1 hover:bg-zinc-800 rounded-full transition-colors">
-                            <img src="${user.photoURL}" class="w-8 h-8 rounded-full border border-zinc-700" alt="">
-                            <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500"></i>
-                        </button>
-                        <div class="absolute right-0 mt-2 w-64 bg-[#1e1e1e] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden hidden group-hover:block z-50">
-                            <div class="p-4 border-b border-zinc-800">
-                                <p class="font-bold text-white truncate">${user.displayName}</p>
-                                <p class="text-xs text-zinc-400 truncate">${user.email}</p>
-                            </div>
-                            <div class="p-2">
-                                <button id="logoutBtn" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-900/20 rounded-lg transition-colors">
-                                    <i data-lucide="log-out" class="w-4 h-4"></i> Выйти
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth));
-                lucide.createIcons();
-            } else {
-                userArea.innerHTML = `
-                    <button id="loginBtn" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-full transition-all">
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="">
-                        <span>Войти</span>
-                    </button>
-                `;
-                document.getElementById('loginBtn')?.addEventListener('click', () => showModal(loginModal));
-            }
-        }
-
-        // News Fetching
-        async function fetchNews(isLoadMore = false) {
+        async function fetchNews() {
             if (isLoading) return;
             isLoading = true;
-            if (!isLoadMore) newsContainer.innerHTML = '<div class="flex flex-col items-center justify-center py-20"><i data-lucide="refresh-cw" class="w-10 h-10 text-blue-600 animate-spin mb-4"></i><p class="text-zinc-400">Загрузка свежих новостей...</p></div>';
+            newsContainer.innerHTML = '<div class="flex flex-col items-center justify-center py-20"><i data-lucide="refresh-cw" class="w-10 h-10 text-blue-600 animate-spin mb-4"></i><p class="text-zinc-400">Загрузка свежих новостей...</p></div>';
             lucide.createIcons();
 
-            // Detect Country via Geolocation or fallback
-            let country = "Россия"; // Default
             try {
-                const geoRes = await fetch('https://ipapi.co/json/');
-                const geoData = await geoRes.json();
-                if (geoData.country_name) country = geoData.country_name;
-            } catch (e) { console.error("Geo error:", e); }
-
-            // Improved Recommendation Logic: Extract keywords from favorites and history
-            const favKeywords = favorites.map(f => f.title.split(' ').filter(w => w.length > 5)).flat().slice(0, 10).join(', ');
-            const historyKeywords = history.map(h => h.title.split(' ').filter(w => w.length > 5)).flat().slice(0, 10).join(', ');
-            const interests = [favKeywords, historyKeywords, country, "политика"].filter(Boolean).join(', ');
-
-            const prompt = `Ты - NexNews. Твоя задача - найти 30 САМЫХ СВЕЖИХ новостей на РУССКОМ языке за сегодня. 
-            ГЛАВНЫЙ ПРИОРИТЕТ: Новости страны: ${country}. Минимум 90% новостей должны быть об этой стране.
-            ПЕРСОНАЛИЗАЦИЯ: Пользователь интересуется темами: ${interests}. Сделай ленту максимально релевантной его интересам.
-            Верни JSON массив объектов: id, title, summary, url, source, publishedAt, category, imageUrl. 
-            Используй googleSearch. Будь быстр.`;
-
-            try {
-                // Вызываем внутренний API, чтобы скрыть ключ
-                const response = await fetch('/api/news', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt })
-                });
-
-                if (!response.ok) throw new Error('Server error');
-                
-                const result = await response.json();
-                const newItems = result.news || [];
-                
-                if (newItems.length === 0) {
-                    newsContainer.innerHTML = '<div class="text-center py-20 text-zinc-400">Новостей пока нет. Попробуйте обновить позже.</div>';
-                    return;
+                const allNews = [];
+                for (const url of RSS_FEEDS) {
+                    try {
+                        // Используем публичный прокси для обхода CORS
+                        const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
+                        const data = await res.json();
+                        if (data.items) {
+                            data.items.forEach(item => {
+                                allNews.push({
+                                    id: item.guid || Math.random().toString(36),
+                                    title: item.title,
+                                    summary: item.description.replace(/<[^>]*>?/gm, '').slice(0, 150) + '...',
+                                    url: item.link,
+                                    source: data.feed.title || 'Новости',
+                                    publishedAt: item.pubDate,
+                                    category: item.categories?.[0] || 'Общее',
+                                    imageUrl: item.enclosure?.link || item.thumbnail || null
+                                });
+                            });
+                        }
+                    } catch (e) { console.error("RSS fetch error:", e); }
                 }
 
-                if (isLoadMore) news = [...news, ...newItems];
-                else news = newItems;
-
+                // Сортировка по дате
+                news = allNews.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
                 renderNews();
             } catch (error) {
-                console.error("Fetch error:", error);
-                newsContainer.innerHTML = '<div class="text-center py-20 text-red-500">Ошибка загрузки. Проверьте API ключ.</div>';
+                console.error("Global fetch error:", error);
+                newsContainer.innerHTML = '<div class="text-center py-20 text-red-500">Ошибка загрузки новостей. Попробуйте позже.</div>';
             } finally {
                 isLoading = false;
                 loadMoreBtn.classList.remove('hidden');
@@ -273,7 +206,7 @@
             }
 
             newsContainer.innerHTML = itemsToRender.map((item, i) => `
-                <article class="bg-[#1e1e1e] border border-zinc-800 rounded-2xl overflow-hidden hover:shadow-xl transition-all group">
+                <article class="news-card bg-[#1e1e1e] border border-zinc-800 rounded-2xl overflow-hidden group">
                     <div class="p-4 flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <div class="w-6 h-6 bg-zinc-800 rounded-full flex items-center justify-center border border-zinc-700">
@@ -313,7 +246,6 @@
             lucide.createIcons();
         }
 
-        // Global Actions
         window.openNews = (url, title, source, imageUrl, category) => {
             const entry = { title, url, source, imageUrl, category, viewedAt: new Date().toISOString() };
             history = [entry, ...history.filter(h => h.url !== url)].slice(0, 50);
@@ -352,18 +284,14 @@
             renderNews();
         };
 
-        // UI Helpers
         function showModal(el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('opacity-100'), 10); }
         function hideModal(el) { el.classList.remove('opacity-100'); setTimeout(() => el.classList.add('hidden'), 300); }
 
-        // Event Listeners
         document.getElementById('menuBtn').addEventListener('click', () => { showModal(sidebar); showModal(sidebarOverlay); sidebar.classList.remove('-translate-x-full'); });
         document.getElementById('closeSidebar').addEventListener('click', () => { hideModal(sidebarOverlay); sidebar.classList.add('-translate-x-full'); });
         sidebarOverlay.addEventListener('click', () => { hideModal(sidebarOverlay); sidebar.classList.add('-translate-x-full'); });
-        document.getElementById('skipLoginBtn').addEventListener('click', () => { hideModal(loginModal); localStorage.setItem('nexnews-skip-login', 'true'); });
-        document.getElementById('googleSignInBtn').addEventListener('click', () => signInWithPopup(auth, provider).then(() => hideModal(loginModal)));
         document.getElementById('refreshBtn').addEventListener('click', () => fetchNews());
-        loadMoreBtn.addEventListener('click', () => fetchNews(true));
+        document.getElementById('skipLoginBtn').addEventListener('click', () => hideModal(loginModal));
 
         // Initial Load
         fetchNews();
